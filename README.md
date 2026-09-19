@@ -9,6 +9,7 @@
 **Built:** June–August 2026
 
 ## Documentation
+
 | File | What's in it |
 |---|---|
 | [hardware/README.md](hardware/README.md) | Full circuit design, component selection, construction |
@@ -18,12 +19,17 @@
 | [docs/design-decisions.md](docs/design-decisions.md) | Every decision made and rejected, with reasoning |
 | [docs/lessons-learned.md](docs/lessons-learned.md) | What I learned building this |
 | [docs/development-log.md](docs/development-log.md) | How the project actually unfolded |
+| [docs/reaction-time-game-onepager.pdf](docs/reaction-time-game-onepager.pdf) | One-page printable summary |
+
+Licensed MIT — see [LICENSE](LICENSE).
 
 ## What it does
 
 Five red LEDs light one second apart, hold, then extinguish together after a random 200–3000 ms delay. Lights-out is the go signal and starts a millisecond timer, which a press of the micro-switch stops; the elapsed time appears on a 128×64 OLED, and an early press is rejected as a false start. Over a 30-round session the device recorded a median of 202 ms and a best of 174 ms. A discrete SR latch built from a 74HC00 debounces the button in hardware, so the firmware timestamps one clean edge per press and contains no debounce code.
 
 ![Animation of one round: the start lights extinguish, the button is pressed, and the OLED shows the result](media/demo.gif)
+
+*One round, recorded to show the sequence rather than a fast time: the hand comes in from outside the frame, so the press itself is visible. Measured reaction times are in the table above.*
 
 ## Results
 
