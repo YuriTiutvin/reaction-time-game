@@ -1,0 +1,30 @@
+# MicroPython
+*.mpy
+.mpy_cache/
+
+# Python tooling used to prepare figures
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Editors
+.vscode/
+.idea/
+*.swp
+
+# Thonny
+.thonny/
+
+# macOS, Windows, Linux desktop clutter
+.DS_Store
+._*
+Thumbs.db
+desktop.ini
+*~
+
+# Raw capture material kept locally, not published
+raw/
+*.mp4
+*.mov
+*.dng
