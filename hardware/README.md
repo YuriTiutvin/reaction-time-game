@@ -1,138 +1,102 @@
-# Test and measurement
+# Hardware
 
-Every number published in this repository comes from one of the tests below, or from a calculation that is shown in full in [../hardware/README.md](../hardware/README.md). Where something was not measured, it is listed as not measured rather than estimated.
+The device measures the interval between a visual stimulus and a button press, so the input path was chosen for what it does to that interval; the rest exists to make the instrument usable away from a bench. Everything runs in one 3.3 V domain, so nothing needs level shifting.
 
-![Bench setup: the device running on battery with the handheld meter on the power path](../media/bench-setup.jpg)
+## Architecture
 
-## Instruments
+Four subsystems sit on two stacked perfboards: an SPDT micro-switch into a discrete SR latch; five PWM LEDs, an SSD1306 OLED on I²C1 and a piezo with a hardware mute; a 1000 mAh LiPo behind a protected TP4056, a load-branch switch and a Schottky onto VSYS; and the Pico's own VBUS sense and VSYS ÷ 3 ADC.
 
-| Instrument | Used for | Settings recorded with each result |
-|---|---|---|
-| FNIRSI 2C53T, 2-channel handheld oscilloscope, ×1 probes | contact transitions, lights-out to press interval | timebase, V/div, coupling, trigger mode |
-| FNIRSI 2C53T multimeter mode | DC volts on the power path and across a LED resistor | DC volts, autorange |
-| The RP2040 itself, running [bounce-count.py](bounce-count.py) | counting transitions on the latch output and the raw contact | script included in this folder |
+Connections are in [interconnect.md](interconnect.md), the drawn schematic in [schematic.pdf](schematic.pdf) with the latch and power path enlarged in [schematic-excerpt.png](schematic-excerpt.png), and the perfboard wiring in [wiring-diagram.png](wiring-diagram.png).
 
-## 1. Contact bounce: raw contact against latch output
+## Debounce: discrete SR latch (74HC00, gates 1 and 2)
 
-**Why.** The SR latch is the central design choice of the project. Until this test, the claim that it returns one clean edge rested on the game working end to end.
+![The SR latch: SN74HC00N, two 10 kΩ pull-ups and the SPDT micro-switch, wired on the breadboard where it was characterised](../media/detail-01.jpg)
 
-**Result.** Seven presses, counted on both nodes at once:
+A mechanical contact chatters for a few milliseconds as it closes. For a counter that costs a wrong count; for a timer it costs either a wrong timestamp or a firmware delay that shifts every measurement.
 
-![Transition counts for seven presses: 6 to 11 on the raw contact, 1 on the latch output](comparison-01.png)
+Two cross-coupled NAND gates form a set-reset latch with active-low inputs. The switch COM sits at ground, NO drives /S, NC drives /R, and both inputs are pulled to 3V3 through 10 kΩ. At rest the wiper holds NC low and Q is low. A press lifts NC first and lands on NO, and Q rises once. During NO-contact bounce /S only alternates between set and hold, both of which keep Q high, and the wiper physically cannot return to NC to reset the latch. The forbidden state, both inputs low, is unreachable for the same mechanical reason.
 
-| Press | Raw contact transitions | Latch output transitions |
-|---|---|---|
-| 1 | 9 | 1 |
-| 2 | 6 | 1 |
-| 3 | 11 | 1 |
-| 4 | 9 | 1 |
-| 5 | 10 | 1 |
-| 6 | 11 | 1 |
-| 7 | 10 | 1 |
+The cost is one 14-pin package, two resistors and a changeover switch, for a gate's propagation delay on the edge and no debounce code at all.
 
-Every press produced between 6 and 11 transitions on the raw contact and exactly one on the latch output. That is the whole argument for the latch, measured rather than assumed.
+**Pull-up sizing [CALCULATED].** With 74HC input leakage of at most 1 µA, a 10 kΩ pull-up holds the input at 3.3 − (1 µA)(10 kΩ) = 3.29 V, which is 0.98 V above the 2.31 V threshold at Vcc = 3.3 V. With the wiper closed it passes 0.33 mA, trivial for a micro-switch. With about 50 pF of node capacitance, τ = 0.5 µs and the node reaches a valid high in about 1.1 µs, inside the roughly 10 µs shortest bounce gap. 1 kΩ wastes current, 100 kΩ settles too slowly.
 
-**Method.** [`bounce-count.py`](bounce-count.py) attaches an interrupt to both edges of two pins and counts transitions: one pin on 74HC00 pin 1, the raw NO contact node, and one on pin 3, the latch output. When either pin moves, the script waits 40 ms for the bounce train to finish, prints both counts, then waits for the release and another 40 ms before arming again. Both counters are plain increments in the handlers, so a missed count would understate the raw contact, never the latch.
+**Latch output into the Pico [CALCULATED].** A lightly loaded 74HC output sits near 3.2 V high and 0.1 V low, leaving 1.2 V and 0.7 V of margin against the RP2040's 2.0 V and 0.8 V thresholds.
 
-The test ran on the breadboard, on GP6 and GP7 rather than the build's GP15. The latch circuit is identical: the same SN74HC00N, the same two 10 kΩ pull-ups and the same micro-switch, wired as in [interconnect.md](../hardware/interconnect.md).
+Measured [../test/README.md](../test/README.md): the raw contact produced 6 to 11 transitions per press and the latch output exactly one; and the wiper leaves one contact 940 µs before it reaches the other, so the two are never closed together. The circuit shown above is the one that was characterised on the breadboard, and it is identical on the board, on different pins.
 
-## 2. Contact transition detail
+## Start lights: five LEDs on PWM
 
-A two-channel capture of the wiper changing over at 500 µs/div. Channel 1 sits on 74HC00 pin 1, the NO contact driving /S; channel 2 on pin 4, the NC contact driving /R. Both are DC-coupled, so the traces are the contact states directly.
+Each 3 mm LED runs from a GPIO through a 150 Ω resistor to ground. Red suited both the theme and the electronics: Formula 1 start lights are red, and on 3.3 V a red LED's 2.0 V forward drop leaves usable headroom where blue or true green would barely light.
 
-**Result.** On the transition captured here the NO contact opens and the NC contact closes **940 µs later**, and the two are never closed at the same time. That gap is what makes the latch's forbidden state unreachable, and it is why bounce on the closing contact — visible as the narrow spikes on channel 2 — cannot reach the latch's reset path. The same mechanism runs in reverse on the press.
+**Series resistor [CALCULATED].** R = (3.3 − 2.0) / 0.010 = 130 Ω for a 10 mA target, so the nearest standard value, 150 Ω, gives 8.7 mA. All five on is 43 mA, inside the chip's aggregate budget.
 
-![Oscilloscope capture of the wiper changing over: the NO contact opens, and the NC contact closes 940 microseconds later](measurement-01.png)
+At full drive the LEDs were uncomfortable to look at, so they are dimmed by PWM at 1 kHz with a duty of 2000/65535, about 3 %, rather than by changing resistors. Peak current and resistor are unchanged; the eye averages the pulses.
 
-Settings: FNIRSI 2C53T, 500 µs/div, 1 V/div both channels, both DC-coupled, ×1 probes, single-shot trigger.
+**Predicted against measured.** Calculated average per LED: 8.7 mA × 2000/65535 = 0.265 mA. Measured across one 150 Ω resistor with the game running: 32.5 mV, or 0.217 mA, about 18 % low. The likely reason is the default 4 mA drive strength, which lets the output sag at a demanded 8.7 mA peak; that has not been isolated, and 8.7 mA is a calculated ideal rather than a measured peak.
 
-## 3. Timing: device reading against oscilloscope interval
+## Buzzer
 
-**Why.** The device's output is a time, so the open question is what that time is measured against.
+The piezo is externally driven, so the PWM frequency sets the pitch where an active buzzer would give one fixed tone. It is capacitive and draws a few milliamps, so a GPIO drives it directly with no transistor or flyback diode.
 
-**Method.** Channel 1 on GP0, the first LED's drive pin. Channel 2 on GP15, the latch output. Timebase 50 ms/div, single-shot, triggered on the latch edge with the trigger point late on screen so lights-out stays visible. Cursors placed at the last LED pulse and at the latch edge; the cursor interval was written down together with the value the OLED displayed for that same round. Ten rounds.
+**Series resistor [CALCULATED].** With about 20 nF of piezo capacitance, 100 Ω limits each PWM edge to 33 mA peak, decaying with a 2 µs time constant, and puts the corner near 80 kHz, far above the tones. The resistor protects the pin, not the buzzer.
 
-![Oscilloscope capture of one round: cursors from lights-out to the latch edge, reading 182 ms](measurement-02.png)
+Mute is a slide switch in the piezo's ground leg; PWM into an open circuit is harmless. Its spare throw feeds GP7, so the firmware can draw the icon without having any control over the mute itself.
 
-Settings: FNIRSI 2C53T, 50 ms/div, channel 1 20 mV/div AC-coupled, channel 2 500 mV/div DC-coupled, ×1 probes, single-shot.
+## Power path
 
-| Round | Device (ms) | Oscilloscope (ms) | Difference (ms) |
+![Profile of the stack showing the TP4056 charger, the LiPo and the buzzer on the lower board](../media/detail-02.jpg)
+
+The cell feeds TP4056 B+/B−. The charger's protected OUT+ runs through the power switch to a 1N5817 anode, and its cathode to Pico VSYS. Charging is done through the charger module's own USB-C with the switch off.
+
+That removes the need for a power-path controller. With USB present the Pico's onboard D1 carries the load from VBUS while the charger works on the cell alone, so termination never sees a load; with the switch off there is no load at all.
+
+**Schottky choice [CALCULATED, with measurement].** A silicon diode's 0.7 V would waste twice the headroom on a cell that only spans 3.0–4.2 V. Worst case, an empty 3.0 V cell leaves VSYS near 2.7 V, above the buck-boost's 1.8 V minimum. Measured with the game running: 0.278–0.286 V across four readings, which confirms the assumption in that check. The same diode read 0.010 V with only a voltmeter across it, because a meter draws microamps and forward voltage falls with current.
+
+![Inside the stack: the 1N5817, the five LED series resistors and the power switch](../media/detail-06.jpg)
+
+**True off [MEASURED].** With USB disconnected and the switch open, VSYS reads 0.2 mV: the load branch is open, so it carries no current. The cell itself is still connected to the charger's B+/B− pads, and that protection circuitry draws its own quiescent current, which was not measured — so this is a true off for the game, not a measured zero for the cell. It is also not a master cutoff when the Pico's own micro-USB is plugged in, since VBUS reaches VSYS through D1 regardless.
+
+## Charging
+
+The TP4056 charges at constant current, then constant voltage, terminating near one tenth of the charge current. The dual-protection variant adds a DW01A and FS8205 layer, redundant with the cell's own board and kept for that reason.
+
+Charge current is set by the module's program resistor, roughly I = 1200 / R(kΩ) in milliamps, and the stock board ships at about 1 A. A 1000 mAh cell rated 1C accepts exactly that, so no SMD rework was needed, which is also why this cell was chosen over a 500 mAh one. The tradeoff is charging at the cell's ceiling rather than inside it, so the module sits where the resistor can still be swapped.
+
+A full cycle was verified with the subsystem on its own: 4.026 V mid-charge, 4.205 V and 4.217 V through the constant-voltage tail, termination at 4.192 V as the status LED flipped to blue, and 4.175 V five minutes later once surface charge had relaxed.
+
+## Battery sensing
+
+The Pico brings VSYS out through an internal divide-by-three to ADC3 on GP29, and VBUS presence on GP24. Since charging happens with the switch off, the device runs on battery whenever it is on, so VSYS tracks the cell minus the Schottky drop.
+
+The firmware averages eight samples, converts with VSYS = raw / 65535 × 3.3 × 3, and adds a fixed 0.3 V for the diode. Measured at four charge states, the estimate reads 39–62 mV high — the direction a fixed back-add predicts, since the true drop is under 0.3 V — which is well inside the 0.2–0.3 V display buckets and puts the 3.4 V shutdown near a true 3.34 V. A MAX17048 was selected first and abandoned when it went out of stock; it remains a drop-in upgrade on the existing bus.
+
+## Current budget
+
+| Rail | Voltage | Source | Feeds |
 |---|---|---|---|
-| 1 | 222 | 216 | +6 |
-| 2 | 256 | 248 | +8 |
-| 3 | 214 | 204 | +10 |
-| 4 | 208 | 200 | +8 |
-| 5 | 206 | 200 | +6 |
-| 6 | 200 | 192 | +8 |
-| 7 | 160 | 156 | +4 |
-| 8 | 201 | 196 | +5 |
-| 9 | 184 | 180 | +4 |
-| 10 | 187 | 182 | +5 |
+| Charger USB-C 5 V | 5 V | wall adapter | TP4056 only, with the switch off |
+| Pico micro-USB 5 V | 5 V | PC | VBUS → D1 → VSYS |
+| Battery | 3.0–4.2 V | 1000 mAh LiPo via TP4056 OUT+ | switch → 1N5817 → VSYS |
+| VSYS | 1.8–5.5 V accepted | whichever source is higher | RP2040 buck-boost |
+| 3V3(OUT) | 3.3 V | RP2040 buck-boost | 74HC00, both pull-ups, OLED |
 
-**Result.** The device reads high in every round, by 4 to 10 ms, mean +6.4 ms, standard deviation 2.0 ms. Cursor placement at this timebase resolves to about 4 ms, which accounts for part of the spread but not for a consistent one-way offset. The bias is uncorrected in firmware and is tracked as an open issue; candidate causes are listed in [../firmware/notes.md](../firmware/notes.md).
+Supply current was never measured: the cell's leads are soldered to the charger pads, and breaking that joint for a meter was judged more likely to damage the build than the reading was worth. A runtime figure would therefore rest on an estimate, so none appears anywhere in this repository. Measuring it is tracked as an open issue.
 
-## 4. Reaction-time session
+## Construction
 
-**Method.** One player, one sitting, fresh boot, 30 consecutive rounds, every result written down including the slow ones. The same player then ran 30 rounds of the Human Benchmark reaction test on a computer in the same sitting.
+![Side view of the two-board stack on standoffs](../media/detail-03.jpg)
 
-| | Device | Human Benchmark |
-|---|---|---|
-| Rounds | 30 | 30 |
-| Best | 174 ms | 228 ms |
-| Median | 202 ms | 251 ms |
-| Mean | 204 ms | 255 ms |
-| Standard deviation | 20 ms | 19 ms |
-| Range | 174–260 ms | 228–305 ms |
+The design was proven on a breadboard, then moved to perfboard. Two boards stack on standoffs — the upper carries the Pico, OLED, 74HC00, five LEDs and all three switches, the lower the battery, charger and buzzer — because a single board could not hold the parts and the wiring between them.
 
-The medians differ by 49 ms, and the device's own +6.4 ms bias from test 3 widens that to about 55 ms once removed. The mechanism behind the gap is the measurement chain, not the player: a computer test adds display pipeline and input-stack latency between the stimulus and the recorded press, where this device's chain is an LED, a latch and an interrupt. How much each contributes was not measured here, so the comparison is published as two distributions taken in one sitting, not as a latency figure for the computer.
+The bare Pico is soldered flat to the upper board, each lead entering the same hole as the pad it shares a net with. Socketing hedges against an unproven layout, and the breadboard had already removed that risk; the cost is that removing the Pico means heating about 40 joints without lifting pads.
 
-## 5. Battery gauge calibration
+Three layout rules were followed: related parts clustered so a future change is local surgery; the TP4056 left accessible for the program-resistor swap; and every ground returning to one star node at TP4056 OUT−, since a split ground is a quiet killer on a diode-OR supply. The perfboard holes were too small for the standoff screws, so the corners were cut off and a loop of wire soldered around each to form a mounting eye.
 
-**Method.** A throwaway script replaced `main.py` and displayed the raw ADC conversion on the OLED, since the reading is only valid on battery and the REPL needs USB, which switches VSYS to the USB rail. At each point the OLED values were read and the cell and VSYS were measured at the pins with the meter. Four points across two days of running the device down.
+## Known compromises
 
-| Point | OLED VSYS (V) | OLED estimate (V) | Meter VSYS (V) | Meter cell (V) | Estimate error (V) | Implied diode drop (V) |
-|---|---|---|---|---|---|---|
-| Fresh off charger | 3.77 | 4.07 | 3.745 | 4.031 | +0.039 | 0.286 |
-| After the session in test 4 | 3.77 | 4.07 | 3.749 | 4.029 | +0.041 | 0.280 |
-| After several hours on | 3.73 | 4.03 | 3.708 | 3.986 | +0.044 | 0.278 |
-| After several more hours on | 3.69 | 3.99 | 3.649 | 3.928 | +0.062 | 0.279 |
+- The gauge is coarse, with a fixed diode offset that is slightly wrong by design.
+- Supply current, sleep current and charge time are unmeasured, so no runtime or charge-time claim is made.
+- The Pico is effectively permanent on the board, and two stacked boards are larger than the parts require.
+- The mute switch is sensed but not controlled, deliberately: the hardware mute stays authoritative.
 
-**Result.** The ADC path itself reads 21–41 mV above the meter, and the displayed estimate reads 39–62 mV above the true cell, because the firmware adds a fixed 0.3 V for a diode that actually drops 0.278–0.286 V under this load. The error is one-sided and small next to the 0.2–0.3 V icon buckets. Its practical consequence is that the 3.4 V shutdown fires at a true cell voltage near 3.34 V.
-
-The same four readings answer a question the design notes left open: the Schottky drop with the game running is 0.28 V, against 0.010 V measured with nothing but a voltmeter across the same diode.
-
-## 6. True-off verification
-
-With USB disconnected and the power switch open, VSYS to ground reads 0.2 mV. The switch genuinely disconnects the load branch. It is not a master cutoff when the Pico's own micro-USB is connected, because VBUS reaches VSYS through the Pico's onboard diode.
-
-## 7. LED drive current
-
-With the game running, the voltage across one 150 Ω LED resistor measured 32.5 mV, which is an average current of 0.217 mA per LED. The calculated value for the PWM duty in use is 0.265 mA. See [../hardware/README.md](../hardware/README.md) for the calculation and the likely reason for the 18 % gap.
-
-## 8. Charge subsystem, tested on its own
-
-Run before the charger was connected to anything downstream: cell on B+/B−, a wall adapter into the module's USB-C, meter on OUT+/OUT−.
-
-| Stage | OUT+ | Status LED |
-|---|---|---|
-| Mid-charge | 4.026 V | red |
-| Constant-voltage phase | 4.205 V | red |
-| Later in the tail | 4.217 V | red |
-| Termination | 4.192 V | flipped to blue |
-| Five minutes off the charger | 4.175 V | — |
-
-A clean constant-current to constant-voltage to termination cycle, inside the charger's 4.2 V ±1 % window throughout. The 17 mV settle after the charger is removed is surface charge relaxing, which is why the gauge is calibrated against the resting voltage rather than the charger-held one.
-
-## Pass/fail summary
-
-| Test | Result |
-|---|---|
-| Raw contact bounces, latch output does not | Pass, 7 presses |
-| Break-before-make changeover | Pass, 940 µs of open circuit between the contacts |
-| Timer agrees with an oscilloscope | Fail as an absolute timer: +6.4 ms mean bias, tracked as an open issue |
-| Game plays end to end on battery, with sound and mute | Pass |
-| Charging works through the module's USB-C with the switch off | Pass |
-| Power switch gives a true off | Pass, 0.2 mV at VSYS |
-| Battery gauge tracks the cell | Pass within 62 mV across four points |
-| Charge cycle terminates correctly | Pass |
-| Supply current, sleep current, runtime, charge time | Not measured |
+The perfboard, standoffs and screws are generic 2.54 mm-pitch hardware and are listed that way in the BOM.
