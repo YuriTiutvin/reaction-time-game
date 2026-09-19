@@ -1,0 +1,17 @@
+ref,part,manufacturer_part,qty_fitted,unit_price_usd,price_basis,source,notes
+U1,"Raspberry Pi Pico, RP2040, bare",SC0915,1,4.59,as paid,DigiKey 2648-SC0915CT-ND,soldered flat to the perfboard with no headers
+U2,"Quad 2-input NAND, DIP-14",SN74HC00N,1,0.78,as paid,DigiKey 296-1563-5-ND,"two gates form the SR latch; 2 bought"
+U3,"TP4056 Type-C charger with dual protection (DW01A + FS8205)",generic module,1,2.00,estimated,"Amazon, HiLetgo, 3-pack 5.99",B+/B-/OUT+/OUT- pads
+DS1,"0.96 in 128x64 SSD1306 OLED, I2C, 4-pin",generic module,1,2.70,as paid,"Amazon, Hosyond, 5-pack 13.49",
+BT1,"1000 mAh single-cell LiPo pouch with protection board",JLJLUP 1000mAh,1,9.00,estimated,Amazon,"20 x 51 x 10 mm, PH 2.0 mm connector, leads soldered to B+/B-"
+SW1,"SPDT snap-action micro-switch, lever, 0.49 N",D2F-01L,1,1.44,as paid,DigiKey SW154-ND,"game button; SPDT is required by the SR latch; 2 bought"
+SW2,"SPDT slide switch, maintained",SS-12D00,1,0.27,estimated,"Amazon, HiLetgo, 20-pack 5.39","power switch, wired as SPST in the load branch"
+SW3,"SPDT slide switch, maintained",SS-12D00,1,0.27,estimated,"Amazon, HiLetgo, 20-pack 5.39","buzzer mute; third terminal sensed on GP7"
+D1,"Schottky diode, 1 A",1N5817,1,0.30,estimated,DigiKey,"cathode toward VSYS"
+LS1,"Externally driven piezo transducer, 4 kHz",PKM22EPPH4001-B0,1,1.50,estimated,DigiKey 490-4692-ND,
+D2-D6,"Red LED, 3 mm",Adafruit 4202 kit,5,2.95,as paid,DigiKey 1528-2951-ND,"25-piece kit price; 5 fitted"
+R1-R5,"150 ohm 1% 1/4 W axial",MFR-25FBF52-150R,5,0.041,as paid,DigiKey 150XBK-ND,"LED current limit; 10 bought"
+R6-R7,"10 kohm 1% 1/4 W axial",RNF14FTD10K0,2,0.10,as paid,DigiKey RNF14FTD10K0CT-ND,"SR-latch input pull-ups; 3 bought"
+R8,"100 ohm axial",generic,1,0.02,estimated,on hand,buzzer series resistor
+PCB1-PCB2,"Perfboard, 2.54 mm pitch",generic,2,10.00,estimated,Amazon,"kit price; 2 boards used, corners cut for mounting"
+HW1,"Standoffs and screws for the two-board stack",generic,1,,,,"generic hardware, size not recorded"
