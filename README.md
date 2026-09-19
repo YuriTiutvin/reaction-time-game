@@ -58,6 +58,7 @@ flowchart LR
     MCU -->|I2C1 400 kHz| OLED[SSD1306 128x64]
     USBC((Charger USB-C)) -.->|5 V| TP[TP4056 charger]
     BATT[(1000 mAh LiPo)] -.->|3.0 to 4.2 V| TP
+    TP -.->|charge 1 A| BATT
     TP -.->|OUT plus| SW[Power switch]
     SW -.->|1N5817| MCU
     USBP((Pico micro-USB)) -.->|VBUS| MCU
