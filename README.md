@@ -1,6 +1,6 @@
 # Reaction Time Game
 
-*A battery-powered five-light reaction timer that measures simple visual reaction time through a hardware-debounced input path.*
+*A handheld reaction timer for Formula 1 fans: it runs the same five-light start sequence used at an F1 race start and measures reaction time in milliseconds.*
 
 ![Reaction Time Game running on battery, five red LEDs lit and the OLED showing the get-ready screen](media/hero.jpg)
 
@@ -25,7 +25,7 @@ Licensed MIT — see [LICENSE](LICENSE).
 
 ## What it does
 
-Five red LEDs light one second apart, hold, then extinguish together after a random 200–3000 ms delay. Lights-out is the go signal and starts a millisecond timer, which a press of the micro-switch stops; the elapsed time appears on a 128×64 OLED, and an early press is rejected as a false start. Over a 30-round session the device recorded a median of 202 ms and a best of 174 ms. A discrete SR latch built from a 74HC00 debounces the button in hardware, so the firmware timestamps one clean edge per press and contains no debounce code.
+Built for Formula 1 fans who want to test their reaction time against the start sequence drivers face at every race. Five red lights come on one second apart, hold, then go out together after a random 200–3000 ms delay. Lights-out starts a millisecond timer, a button press stops it, and the result appears on a small OLED screen; pressing early is flagged as a false start. It runs on a Raspberry Pi Pico, a microcontroller board built on the RP2040 chip, from a rechargeable battery. A discrete logic latch debounces the button in hardware, and the timer was checked against an oscilloscope: every reading landed within 10 ms.
 
 ![Animation of one round: the start lights extinguish, the button is pressed, and the OLED shows the result](media/demo.gif)
 
@@ -35,8 +35,8 @@ Five red LEDs light one second apart, hold, then extinguish together after a ran
 
 | Metric | Value | Conditions | How measured |
 |---|---|---|---|
-| Reaction time, one session | median 202 ms, best 174 ms, range 174–260 ms (n = 30) | one player, seated, single sitting, fresh boot | read from the OLED each round |
-| Same player, Human Benchmark reaction test | median 251 ms, best 228 ms (n = 30) | same sitting, same player | read from the test's own display |
+| My reaction time on this device | median 202 ms, best 174 ms, range 174–260 ms (n = 30) | measured on myself: 30 consecutive rounds, seated, one sitting, fresh boot | read from the OLED after each round |
+| My reaction time on the Human Benchmark web test | median 251 ms, best 228 ms (n = 30) | measured on myself in the same sitting, on a computer | read from the test's own display |
 | Timer bias against an oscilloscope | device reads 4–10 ms high, mean +6.4 ms (n = 10) | FNIRSI 2C53T, 50 ms/div, cursor resolution about 4 ms | cursor interval from lights-out to the latch edge, compared with the displayed result |
 | Contact bounce, raw switch | 6–11 transitions per press (7 presses) | same switch, same press action | GPIO transition count |
 | Contact bounce, latch output | 1 transition per press (7 presses) | as above | GPIO transition count |
