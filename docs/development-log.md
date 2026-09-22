@@ -67,4 +67,4 @@ The timer was measured against a scope over ten rounds, and reads 6.4 ms high on
 
 The battery gauge was calibrated at four charge states against a meter, which also finally answered the open question about the Schottky: 0.28 V under the running load, against 0.010 V with only a meter across it.
 
-A 30-round session, plus 33 rounds of a computer reaction test by the same player in the same sitting, replaced the informal times that had been quoted until then.
+A 30-round session on the device, plus 30 rounds of the Human Benchmark reaction test on a computer, both played by me in the same sitting, replaced the informal times that had been quoted until then.

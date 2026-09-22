@@ -73,7 +73,7 @@ Settings: FNIRSI 2C53T, 50 ms/div, channel 1 20 mV/div AC-coupled, channel 2 500
 
 ## 4. Reaction-time session
 
-**Method.** One player, one sitting, fresh boot, 30 consecutive rounds, every result written down including the slow ones. The same player then ran 30 rounds of the Human Benchmark reaction test on a computer in the same sitting.
+**Method.** I played 30 consecutive rounds myself, seated, in one sitting, from a fresh boot, and wrote down every result, including the slow ones. In the same sitting I then played 30 rounds of the Human Benchmark reaction test on a computer. These are measurements of my own reaction time, not of the device; the device's own accuracy is test 3.
 
 | | Device | Human Benchmark |
 |---|---|---|

@@ -14,7 +14,7 @@ The hardest part of the build was laying out and soldering the 74HC00 latch on p
 
 **A scheduled interrupt handler is not the electrical edge.** MicroPython's `Pin.irq` defaults to a handler that runs when the interpreter next gets control. For counting presses that difference is invisible; for timestamping them it is part of the measurement.
 
-**Other instruments measure their own latency too.** A computer reaction test records the press after a display pipeline and an input stack have each added their own delay, which is a large part of why the same player scored a 251 ms median there and 202 ms here in the same sitting. Fidelity ranks as purpose-built device, then computer with a key, then a phone touchscreen.
+**Other instruments measure their own latency too.** A computer reaction test records the press after a display pipeline and an input stack have each added their own delay, which is a large part of why I scored a 251 ms median there and 202 ms here in the same sitting. Fidelity ranks as purpose-built device, then computer with a key, then a phone touchscreen.
 
 ## Switches and debounce
 
